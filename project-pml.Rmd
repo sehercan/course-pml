@@ -1,0 +1,106 @@
+---
+title: "Course Project - Practical Machine Learning"
+author: "Seher Can Akay"
+date: "12/4/2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background and Overview
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. 
+
+In this project, my goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+
+## Loading Libraries and Data
+```{r message=FALSE}
+
+library(caret)
+library(rpart)
+library(randomForest)
+library(rattle)
+
+train <- read.csv("pml-training.csv") # will be used for prediction on this project
+quiz_testing <- read.csv("pml-testing.csv") # will be used for the quiz of the project
+```
+
+## Cleaning Data for Prediction
+I am removing the columns with NA values:
+```{r}
+train <- train[, colSums(is.na(train)) == 0]
+```
+
+I am cleaning the columns which has nearly zero variance:
+```{r}
+#Remove Near-Zero Values from Data
+nearZero <- nearZeroVar(train)
+train <- train[, -nearZero]
+```
+
+I am removing first 5 variables, since they dont seem to have an impact on the variable "classe"
+```{r}
+train <- train[, -c(1:5)]
+dim(train)
+```
+
+Now, I will split the data to training and testing sets:
+```{r}
+inTrain <- createDataPartition(train$classe, p = 0.75, list = FALSE)
+training <- train[inTrain,]
+testing <- train[-inTrain,]
+
+dim(training)
+dim(testing)
+```
+
+## Modelling
+
+I will apply 3 different models on the data and try to find the best model to predict the "classe".
+
+### Random Forest Model
+
+```{r}
+modFit1 <- randomForest(classe ~., method = "class", data = training)
+pred1 <- predict(modFit1, newdata = testing, type = "class")
+
+confMatrix1 <- confusionMatrix(pred1, testing$classe)
+confMatrix1$table
+
+confMatrix1$overall[1]
+```
+`r confMatrix1$overall[1]` is preety good accuracy. But let's try other models as well.
+
+### Decision Tree
+
+```{r}
+modFit2 <- train(classe ~., method = "rpart", data = training)
+fancyRpartPlot(modFit2$finalModel)
+```
+
+Let's see confuison matrix and accuracy:
+```{r}
+pred2 <- predict(modFit2, newdata = testing)
+
+confMatrix2 <- confusionMatrix(pred2, testing$classe)
+confMatrix2$table
+
+confMatrix2$overall[1]
+```
+
+As seen above accuracy of `r confMatrix2$overall[1]` is not so clear to select this model.
+
+## Conclusion
+
+2 different model has been tested. Random Forest seems the best model to fit the data. So Random Forest Model will be used during quiz.
+ 
+```{r}
+predQuiz <- predict(modFit1, newdata = quiz_testing, type = "class")
+predQuiz
+
+```
+
